@@ -1,0 +1,207 @@
+import random
+import time
+import matplotlib.pyplot as plt
+import psutil
+
+
+#Implementação Hashtable
+class Hashtable:
+    def __init__(self, tamanho=10000):
+       self.tamanho = tamanho
+       self.tabela = [[] for _ in range(tamanho)]
+       self.size = 0
+
+    def _hash(self, chave):
+       return hash(chave) % self.tamanho
+
+    def inserir_em_posicao(self, chave, valor):
+       indice = self._hash(chave)
+       for par in self.tabela[indice]:
+           if par[0] == chave:
+               par[1] = valor
+               return
+       self.tabela[indice].append([chave, valor])
+       self.size += 1
+
+    def buscar(self, chave):
+       indice = self._hash(chave)
+       for par in self.tabela[indice]:  
+           if par[0] == chave:
+               return par[1]
+       return None
+ 
+    def remover(self, chave):
+       indice = self._hash(chave)
+       for i, par in enumerate(self.tabela[indice]):
+           if par[0] == chave:
+               del self.tabela[indice][i]
+               self.size -= 1
+               return True
+       return False 
+
+#Implementação Fila
+class Fila:
+    def __init__(self):
+        self.itens = []
+
+    def inserir(self, item):
+        self.itens.append(item)
+
+
+    def inserir_em_posicao(self, posicao, elemento):
+        if 0 <= posicao <= len(self.itens):
+            temporario = []
+            for i in range(len(self.itens)):
+                if i == posicao:
+                    temporario.append(elemento)
+                temporario.append(self.itens[i])
+            if posicao == len(self.itens):
+                temporario.append(elemento)
+            self.itens[:] = temporario
+        else:
+            None
+
+    def remover(self, posicao):
+        if 0 <= posicao < len(self.itens):
+            temporario = []
+            for i in range(len(self.itens)):
+                if i == posicao:
+                   elemento_removido = self.itens[i]
+                else:
+                   temporario.append(self.itens[i])
+            self.itens[:] = temporario
+        else:
+            None
+
+    def buscar(self, posicao):
+        return self.itens[posicao]
+
+#Implementação Pilha
+class Pilha:
+    def __init__(self):
+        self.itens = []
+   
+    def inserir(self, item):
+        self.itens.append(item)
+
+    def inserir_em_posicao(self, posicao, elemento):
+        if 0 <= posicao <= len(self.itens):
+            temporario = []
+            while len(self.itens) > posicao:
+                temporario.append(self.itens.pop())
+            self.itens.append(elemento)
+            while temporario:
+                self.itens.append(temporario.pop()) 
+        else:
+            None
+
+    def remover(self, posicao):
+        if 0 <= posicao < len(self.itens):
+            temporario = []
+            while len(self.itens) - 1 > posicao:
+                temporario.append(self.itens.pop())
+            elemento_removido = self.itens.pop()
+            while temporario:
+                self.itens.append(temporario.pop())           
+        else:
+            None
+
+    def buscar(self, posicao):
+        return self.itens[posicao]
+
+#Função populando estruturas
+def popular_estruturas(nome_arquivo):
+    fila = Fila()
+    pilha = Pilha()
+    hashtable = Hashtable()
+
+    try:
+        with open(nome_arquivo, 'r') as file:
+            linhas = file.readlines()
+
+        #Embaralha as linhas
+        random.shuffle(linhas)
+
+        for index, linha in enumerate(linhas):
+            elemento = linha.strip()
+
+            fila.inserir(elemento)
+
+            pilha.inserir(elemento)
+
+            hashtable.inserir_em_posicao(index, elemento)
+    
+    except FileNotFoundError:
+        print(f"Erro: O arquivo '{nome_arquivo}' não foi encontrado.")
+        return None, None, None
+
+    return fila, pilha, hashtable
+
+
+#Função para realizar as operações de inserção e remoção
+def processar_operacoes(estruturas, comandos, num_operacoes, num_execucoes):
+    tempos = {"TabelaHash": [], "Pilha": [], "Fila": []}
+
+    for i in range(0, len(comandos), num_operacoes):
+        bloco_comandos = comandos[i:i+num_operacoes]
+
+        for estrutura_nome, estrutura in estruturas.items():
+            tempos_estrutura = []
+            for _ in range(num_execucoes):
+                inicio = time.time()
+                for comando in bloco_comandos:
+                    if isinstance(comando, tuple):
+                        chave, valor = comando
+                        estrutura.inserir_em_posicao(int(chave), valor)
+                    else:
+                        chave = comando
+                        estrutura.remover(int(chave))
+                fim = time.time()
+                tempo = fim - inicio
+                tempos_estrutura.append(tempo)
+
+            # Calcula a média do tempo para a estrutura atual
+            tempos[estrutura_nome].append(sum(tempos_estrutura) / len(tempos_estrutura))
+
+    return tempos
+
+
+def principal():
+    fila, pilha, hashtable = popular_estruturas('listagem.txt')
+   
+    if fila and pilha and hashtable:
+        posicoes = [0, 99, 999, 4999, 9997, 9998, 9999]
+
+        for pos in posicoes:
+            print(f"Elemento na posição {pos + 1} da Fila: {fila.buscar(pos)}")
+            print(f"Elemento na posição {pos + 1} da Pilha: {pilha.buscar(pos)}")
+            print(f"Elemento na posição {pos + 1} na HashTable: {hashtable.buscar(pos)}")
+
+    #Chama função de inserção e remoção
+    with open('insercao.txt', 'r') as file:
+        comandos = []
+        for linha in file:
+            partes = linha.strip().split(',')
+            if len(partes) == 2:
+                comandos.append(partes[0])  
+            elif len(partes) == 3:
+                comandos.append((partes[0], partes[2])) 
+
+    estruturas = {"TabelaHash": hashtable, "Pilha": pilha, "Fila": fila}
+    tempos = processar_operacoes(estruturas, comandos, 10, num_execucoes=30)
+    
+    #Plotando o gráfico
+    for estrutura_nome, tempos_estrutura in tempos.items():
+        print(f"{estrutura_nome} : {len(tempos_estrutura)}")
+        plt.plot(range(1, len(tempos_estrutura)+1), tempos_estrutura, label=estrutura_nome)
+
+    plt.xlabel('Número de operações (blocos de 10)')
+    plt.ylabel('Tempo médio (segundos)')
+    plt.title('Desempenho das Estruturas de Dados')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+if __name__ == '__main__':
+    principal()
+
